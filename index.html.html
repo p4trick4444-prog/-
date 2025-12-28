@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>朕天下肆哥專屬｜賽特爆分機率選房</title>
+<style>
+body{
+    margin:0;
+    padding:14px 14px 100px 14px;
+    font-family:"Microsoft JhengHei",Arial,sans-serif;
+    color:#fff;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    overflow:hidden;
+    background:#000;
+}
+#bgCanvas{
+    position:fixed;
+    inset:0;
+    z-index:-2;
+}
+.container{
+    max-width:1100px;
+    width:100%;
+    text-align:center;
+}
+h1{
+    font-size:36px;
+    margin-bottom:18px;
+    font-family:Consolas,"Courier New",monospace;
+    letter-spacing:2px;
+    transition:color .8s,text-shadow .8s;
+}
+button{
+    width:200px;
+    margin:6px;
+    padding:12px;
+    font-size:16px;
+    font-weight:bold;
+    border:none;
+    border-radius:14px;
+    cursor:pointer;
+    color:#fff;
+    transition:background .8s;
+}
+button:disabled{opacity:.45}
+#dataPanel{
+    width:90%;
+    max-width:760px;
+    margin:18px auto;
+    padding:16px;
+    background:rgba(0,0,0,.65);
+    font-family:Consolas,monospace;
+    font-size:13px;
+    text-align:left;
+    display:none;
+}
+.data-line{
+    display:flex;
+    justify-content:space-between;
+    opacity:0;
+    animation:fadeIn .3s forwards;
+}
+@keyframes fadeIn{to{opacity:1}}
+#progressContainer{
+    width:80%;
+    height:18px;
+    margin:14px auto;
+    background:rgba(255,255,255,.2);
+    border-radius:12px;
+    overflow:hidden;
+    display:none;
+}
+#progressBar{
+    height:100%;
+    width:0%;
+    transition:width .12s linear,background .8s;
+}
+.slot-container{
+    display:none;
+    grid-template-columns:repeat(3,1fr);
+    gap:22px;
+    margin-top:28px;
+}
+.slot{
+    padding:24px;
+    border-radius:16px;
+    font-size:20px;
+    background:rgba(0,0,0,.72);
+    display:flex;
+    justify-content:space-between;
+    opacity:0;
+    transform:translateY(16px);
+    transition:.4s;
+    position:relative;
+}
+.slot.show{opacity:1;transform:none}
+/* Slot Glow Animations */
+@keyframes glowPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+@keyframes glowStatic{0%,100%{transform:scale(1)}}
+/* Logos */
+@keyframes floatY{0%,100%{transform:translateY(0);}50%{transform:translateY(-12px);}}
+#floatingLogoLeft{
+    position:fixed;
+    top:20px;
+    left:20px;
+    width:320px;   
+    z-index:999;
+    pointer-events:none;
+    animation:floatY 3s ease-in-out infinite alternate;
+}
+#floatingLogoLeft img{width:100%;height:auto;}
+#floatingLogoRight{
+    position:fixed;
+    top:20px;
+    right:20px;
+    width:160px;
+    z-index:999;
+    pointer-events:none;
+    animation:floatY 3s ease-in-out infinite alternate;
+}
+#floatingLogoRight img{width:100%;height:auto;}
+</style>
+</head>
+<body>
+<canvas id="bgCanvas"></canvas>
+
+<!-- 左上 Logo -->
+<div id="floatingLogoLeft">
+    <img src="logo.png" alt="LOGO">
+</div>
+<!-- 右上 Logo -->
+<div id="floatingLogoRight">
+    <img src="logo2.png" alt="LOGO2">
+</div>
+
+<div class="container">
+<h1 id="title">朕天下肆哥專屬｜賽特 II 爆分機率選房</h1>
+
+<div>
+    <button id="refreshBtn" onclick="refresh()">五分鐘換一次</button>
+    <button id="toggleBtn" onclick="toggleVer()">切換版本</button>
+</div>
+
+<div id="dataPanel"></div>
+<div id="progressContainer"><div id="progressBar"></div></div>
+<div id="slots" class="slot-container"></div>
+</div>
+
+<script>
+/* ===== Matrix Background ===== */
+const canvas=document.getElementById("bgCanvas");
+const ctx=canvas.getContext("2d");
+let cols, drops=[];
+let matrixColor1="#00aaff", matrixColor2="#0044aa";
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight;cols=Math.floor(canvas.width/20);drops=Array(cols).fill(1);}
+window.onresize=resize; resize();
+function randomChar(){const chars="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";return chars.charAt(Math.floor(Math.random()*chars.length));}
+function drawMatrix(){ctx.fillStyle="rgba(0,0,0,0.08)";ctx.fillRect(0,0,canvas.width,canvas.height);ctx.font="16px monospace";for(let i=0;i<drops.length;i++){ctx.fillStyle=i%2?matrixColor1:matrixColor2;ctx.fillText(randomChar(), i*20, drops[i]*20);if(drops[i]*20>canvas.height && Math.random()>0.975)drops[i]=0;drops[i]++;}requestAnimationFrame(drawMatrix);}
+drawMatrix();
+
+/* ===== App Logic ===== */
+let version="II";
+let cooldownTimers={I:false,II:false};
+let cooldownSeconds={I:300,II:300};
+let currentTimer=null;
+
+const title=document.getElementById("title");
+const slots=document.getElementById("slots");
+const dataPanel=document.getElementById("dataPanel");
+const progressBar=document.getElementById("progressBar");
+const refreshBtn=document.getElementById("refreshBtn");
+const toggleBtn=document.getElementById("toggleBtn");
+
+/* ===== Theme ===== */
+function applyTheme(){
+    if(version==="II"){ 
+        matrixColor1="#00aaff";matrixColor2="#0044aa";
+        title.style.color="#6fd0ff";title.style.textShadow="0 0 12px rgba(80,180,255,.8)";
+        refreshBtn.style.background=toggleBtn.style.background="linear-gradient(#0055cc,#003366)";
+    }else{ 
+        matrixColor1="#00ff66";matrixColor2="#009944";
+        title.style.color="#7cffb0";title.style.textShadow="0 0 12px rgba(80,255,160,.8)";
+        refreshBtn.style.background=toggleBtn.style.background="linear-gradient(#009944,#006633)";
+    }
+}
+
+/* ===== Fake Calculation ===== */
+async function runData(){
+    dataPanel.innerHTML="";
+    dataPanel.style.display="block";
+    document.getElementById("progressContainer").style.display="block";
+
+    const fakeLines = [
+        "Initializing room database...",
+        "Loading player history data...",
+        "Calculating room score probability: Σ(Px*0.73+R/π)...",
+        "Performing random weight balancing...",
+        "Simulating awakening value growth Δ=√(X^2+Y^2)...",
+        "Generating predicted room distribution...",
+        "Adjusting probability percentages and weights...",
+        "Finalizing room priority calculation..."
+    ];
+
+    for(const line of fakeLines){
+        let div=document.createElement("div");
+        div.className="data-line";
+        dataPanel.appendChild(div);
+        let percent=0;
+        await new Promise(resolve=>{
+            function step(){
+                let speed = (percent<50)?Math.random()*5+3:Math.random()*2+0.5;
+                percent += speed;
+                if(percent>100) percent=100;
+                div.innerText = line+" ("+Math.floor(percent)+"%)";
+                progressBar.style.width = Math.floor(percent)+"%";
+                if(percent<100) requestAnimationFrame(step);
+                else setTimeout(resolve,200);
+            }
+            step();
+        });
+    }
+}
+
+/* ===== Slot Generation ===== */
+function genSlots(){
+    let arr=[]; 
+    const highestCount=3;
+    const highCount=7;
+    for(let i=0;i<highestCount;i++){
+        arr.push({t:"highest",p:85+Math.random()*5|0,room:Math.floor(Math.random()*3000)});
+    }
+    for(let i=0;i<highCount;i++){
+        arr.push({t:"high",p:70+Math.random()*10|0,room:Math.floor(Math.random()*3000)});
+    }
+    while(arr.length<30){
+        arr.push({t:"normal",p:50+Math.random()*25|0,room:Math.floor(Math.random()*3000)});
+    }
+    for(let i=arr.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}
+    return arr;
+}
+
+/* ===== Refresh Function ===== */
+async function refresh(){
+    if(cooldownTimers[version]) return;
+
+    slots.innerHTML=""; slots.style.display="none";
+
+    await runData();
+
+    dataPanel.style.display="none";
+    document.getElementById("progressContainer").style.display="none";
+    slots.style.display="grid";
+
+    genSlots().forEach((d,i)=>{
+        let div=document.createElement("div");
+        div.className="slot "+d.t;
+
+        if(version==="II"){ 
+            if(d.t==="highest"){div.style.border="2px solid #3399ff";div.style.color="#3399ff";div.style.boxShadow="0 0 30px rgba(51,153,255,1),0 0 50px rgba(51,153,255,0.7)";div.style.animation="glowPulse 1.3s infinite";}
+            else if(d.t==="high"){div.style.border="2px solid #66ccff";div.style.color="#66ccff";div.style.boxShadow="0 0 15px rgba(102,204,255,0.7)";div.style.animation="glowStatic 1s infinite";}
+            else{div.style.border="1px solid #fff";div.style.color="#e0e0e0";div.style.boxShadow="0 0 6px rgba(255,255,255,.5)";div.style.animation="glowStatic 1s infinite";}
+        }else{ 
+            if(d.t==="highest"){div.style.border="2px solid #00ff66";div.style.color="#00ff66";div.style.boxShadow="0 0 30px rgba(0,255,102,1),0 0 50px rgba(0,255,102,0.7)";div.style.animation="glowPulse 1.3s infinite";}
+            else if(d.t==="high"){div.style.border="2px solid #33ff99";div.style.color="#33ff99";div.style.boxShadow="0 0 15px rgba(51,255,153,0.7)";div.style.animation="glowStatic 1s infinite";}
+            else{div.style.border="1px solid #fff";div.style.color="#e0e0e0";div.style.boxShadow="0 0 6px rgba(255,255,255,.5)";div.style.animation="glowStatic 1s infinite";}
+        }
+
+        div.innerHTML=`<span>第 ${d.room} 房</span><span>爆分機率 ${d.p}%</span>`;
+        slots.appendChild(div);
+        setTimeout(()=>div.classList.add("show"),i*40);
+    });
+
+    applyTheme();
+
+    // Cooldown
+    cooldownTimers[version] = true;
+    let t = cooldownSeconds[version];
+    refreshBtn.disabled = true;
+
+    if(currentTimer) clearInterval(currentTimer);
+    currentTimer = setInterval(()=>{
+        let m = String(Math.floor(t/60)).padStart(2,"0");
+        let s = String(t%60).padStart(2,"0");
+        refreshBtn.innerText = `${m}:${s}`;
+        t--;
+        if(t<0){
+            clearInterval(currentTimer);
+            cooldownTimers[version]=false;
+            refreshBtn.disabled=false;
+            refreshBtn.innerText="五分鐘換一次";
+        }
+    },1000);
+}
+
+/* ===== Toggle Version ===== */
+function toggleVer(){
+    version = version==="II"?"I":"II";
+    title.innerText=`朕天下肆哥專屬｜賽特 ${version} 爆分機率選房`;
+    slots.innerHTML=""; slots.style.display="none";
+    refresh();
+}
+
+applyTheme();
+refresh();
+</script>
+</body>
+</html>
